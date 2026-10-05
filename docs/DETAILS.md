@@ -190,6 +190,12 @@ Its `hit_rate` is the VRAM share of the experts looked up while answering: exper
 (engine 0.1.39 or newer, #588) is their share of all routed experts, and the server log and the Monitor tab show it
 beside the hit rate.
 
+**Experimental CPU expert pipeline (`STRATA_CPU_PIPELINE=1`):** native CPU expert batches can quantize each
+expert's intermediate vectors as soon as its gate/up tasks finish, then run its down tasks without waiting for
+all experts. The row kernels and quantizers are unchanged. This is off by default; unset the variable or set it
+to `0` to restore the separate phases. Speed depends on the CPU, format, batch size and how much work stays on
+the CPU. [Tests, measurements and reproduction](../bench/results/2026-10-05-cpu-pipeline/README.txt).
+
 **Where a decode window's time goes (profiling, #610):** start the server with `STRATA_DECODE_TIMING=1` (and
 `STRATA_VERIFY_PROFILE=1` for the GPU's side) in the environment. After each request the engine log then has one
 `strata decode timing:` line - windows, tokens per window, and per window the verify time split into the wait for the

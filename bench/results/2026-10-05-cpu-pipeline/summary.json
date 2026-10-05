@@ -1,0 +1,350 @@
+{
+  "binary_sha256": "94a09ccac8fb00fa2e7c6d90c5f89106576e86f2794a7efc1a3e756d58209ee1",
+  "all_token_ids_equal": true,
+  "cases": {
+    "code": {
+      "tokens": 200,
+      "token_ids_equal": true,
+      "arms": {
+        "upstream-reference": {
+          "mean_decode_ms": 2177.3,
+          "sd_decode_ms": 3.2526911934580545,
+          "tokens_per_second": 91.85688697010058,
+          "acceptance": [
+            [
+              134,
+              170
+            ]
+          ]
+        },
+        "baseline-before": {
+          "mean_decode_ms": 2155.7,
+          "sd_decode_ms": 0.84852813742405,
+          "tokens_per_second": 92.77728811986826,
+          "acceptance": [
+            [
+              134,
+              170
+            ]
+          ]
+        },
+        "pipeline": {
+          "mean_decode_ms": 2018.2,
+          "sd_decode_ms": 1.6970562748477784,
+          "tokens_per_second": 99.09820632246556,
+          "acceptance": [
+            [
+              134,
+              170
+            ]
+          ]
+        },
+        "baseline-after": {
+          "mean_decode_ms": 2137.1,
+          "sd_decode_ms": 6.222539674441747,
+          "tokens_per_second": 93.58476440035562,
+          "acceptance": [
+            [
+              134,
+              170
+            ]
+          ]
+        }
+      },
+      "speedup_percent": 6.352195025270024,
+      "baseline_drift_percent": -0.8628287795147682
+    },
+    "math": {
+      "tokens": 256,
+      "token_ids_equal": true,
+      "arms": {
+        "upstream-reference": {
+          "mean_decode_ms": 2723.95,
+          "sd_decode_ms": 31.18340905032668,
+          "tokens_per_second": 93.98116705519558,
+          "acceptance": [
+            [
+              177,
+              214
+            ],
+            [
+              177,
+              219
+            ],
+            [
+              178,
+              220
+            ]
+          ]
+        },
+        "baseline-before": {
+          "mean_decode_ms": 2700.6499999999996,
+          "sd_decode_ms": 42.49711754931144,
+          "tokens_per_second": 94.79199451983783,
+          "acceptance": [
+            [
+              177,
+              214
+            ],
+            [
+              177,
+              219
+            ],
+            [
+              178,
+              220
+            ]
+          ]
+        },
+        "pipeline": {
+          "mean_decode_ms": 2526.3500000000004,
+          "sd_decode_ms": 63.568899628670685,
+          "tokens_per_second": 101.33196112969303,
+          "acceptance": [
+            [
+              177,
+              214
+            ],
+            [
+              177,
+              219
+            ],
+            [
+              178,
+              220
+            ]
+          ]
+        },
+        "baseline-after": {
+          "mean_decode_ms": 2681.0,
+          "sd_decode_ms": 25.880108191427897,
+          "tokens_per_second": 95.48675867213726,
+          "acceptance": [
+            [
+              176,
+              219
+            ],
+            [
+              177,
+              216
+            ],
+            [
+              177,
+              219
+            ]
+          ]
+        }
+      },
+      "speedup_percent": 6.510380588596165,
+      "baseline_drift_percent": -0.727602614185463
+    },
+    "prose": {
+      "tokens": 256,
+      "token_ids_equal": true,
+      "arms": {
+        "upstream-reference": {
+          "mean_decode_ms": 3457.1000000000004,
+          "sd_decode_ms": 3.959797974644602,
+          "tokens_per_second": 74.05050475832344,
+          "acceptance": [
+            [
+              123,
+              207
+            ]
+          ]
+        },
+        "baseline-before": {
+          "mean_decode_ms": 3419.15,
+          "sd_decode_ms": 1.7677669529663689,
+          "tokens_per_second": 74.87240980945556,
+          "acceptance": [
+            [
+              123,
+              207
+            ]
+          ]
+        },
+        "pipeline": {
+          "mean_decode_ms": 3226.8500000000004,
+          "sd_decode_ms": 4.171930009000695,
+          "tokens_per_second": 79.33433534251668,
+          "acceptance": [
+            [
+              123,
+              207
+            ]
+          ]
+        },
+        "baseline-after": {
+          "mean_decode_ms": 3398.55,
+          "sd_decode_ms": 6.1518289963231565,
+          "tokens_per_second": 75.3262420738256,
+          "acceptance": [
+            [
+              123,
+              207
+            ]
+          ]
+        }
+      },
+      "speedup_percent": 5.640175403257053,
+      "baseline_drift_percent": -0.6024889226854624
+    },
+    "chinese": {
+      "tokens": 256,
+      "token_ids_equal": true,
+      "arms": {
+        "upstream-reference": {
+          "mean_decode_ms": 2745.0,
+          "sd_decode_ms": 12.162236636408489,
+          "tokens_per_second": 93.26047358834244,
+          "acceptance": [
+            [
+              161,
+              216
+            ]
+          ]
+        },
+        "baseline-before": {
+          "mean_decode_ms": 2714.8,
+          "sd_decode_ms": 2.1213203435596424,
+          "tokens_per_second": 94.29792249889493,
+          "acceptance": [
+            [
+              161,
+              216
+            ]
+          ]
+        },
+        "pipeline": {
+          "mean_decode_ms": 2566.85,
+          "sd_decode_ms": 1.626345596729188,
+          "tokens_per_second": 99.73313594483511,
+          "acceptance": [
+            [
+              161,
+              216
+            ]
+          ]
+        },
+        "baseline-after": {
+          "mean_decode_ms": 2708.7,
+          "sd_decode_ms": 1.5556349186105976,
+          "tokens_per_second": 94.51028168494112,
+          "acceptance": [
+            [
+              161,
+              216
+            ]
+          ]
+        }
+      },
+      "speedup_percent": 5.645051327502593,
+      "baseline_drift_percent": -0.2246942684544062
+    },
+    "sample-code": {
+      "tokens": 256,
+      "token_ids_equal": true,
+      "arms": {
+        "upstream-reference": {
+          "mean_decode_ms": 2441.9,
+          "sd_decode_ms": 4.242640687119285,
+          "tokens_per_second": 104.83639788689135,
+          "acceptance": [
+            [
+              146,
+              204
+            ]
+          ]
+        },
+        "baseline-before": {
+          "mean_decode_ms": 2414.2,
+          "sd_decode_ms": 4.101219330881783,
+          "tokens_per_second": 106.0392676663077,
+          "acceptance": [
+            [
+              146,
+              204
+            ]
+          ]
+        },
+        "pipeline": {
+          "mean_decode_ms": 2313.6000000000004,
+          "sd_decode_ms": 0.28284271247468334,
+          "tokens_per_second": 110.6500691562932,
+          "acceptance": [
+            [
+              146,
+              204
+            ]
+          ]
+        },
+        "baseline-after": {
+          "mean_decode_ms": 2414.65,
+          "sd_decode_ms": 3.7476659402888304,
+          "tokens_per_second": 106.0195059325368,
+          "acceptance": [
+            [
+              146,
+              204
+            ]
+          ]
+        }
+      },
+      "speedup_percent": 4.357927040110643,
+      "baseline_drift_percent": 0.018639715019475034
+    },
+    "sample-prose": {
+      "tokens": 256,
+      "token_ids_equal": true,
+      "arms": {
+        "upstream-reference": {
+          "mean_decode_ms": 3532.1000000000004,
+          "sd_decode_ms": 5.232590180780516,
+          "tokens_per_second": 72.4781291582911,
+          "acceptance": [
+            [
+              124,
+              213
+            ]
+          ]
+        },
+        "baseline-before": {
+          "mean_decode_ms": 3490.45,
+          "sd_decode_ms": 1.4849242404916856,
+          "tokens_per_second": 73.34297869902161,
+          "acceptance": [
+            [
+              124,
+              213
+            ]
+          ]
+        },
+        "pipeline": {
+          "mean_decode_ms": 3294.85,
+          "sd_decode_ms": 1.202081528017002,
+          "tokens_per_second": 77.69701200358135,
+          "acceptance": [
+            [
+              124,
+              213
+            ]
+          ]
+        },
+        "baseline-after": {
+          "mean_decode_ms": 3472.2,
+          "sd_decode_ms": 2.262741699797145,
+          "tokens_per_second": 73.72847186221992,
+          "acceptance": [
+            [
+              124,
+              213
+            ]
+          ]
+        }
+      },
+      "speedup_percent": 5.659589966159317,
+      "baseline_drift_percent": -0.5228552192410696
+    }
+  }
+}

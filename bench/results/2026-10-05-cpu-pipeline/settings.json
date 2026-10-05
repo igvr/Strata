@@ -1,0 +1,104 @@
+{
+  "exe": "build/strata",
+  "args": [
+    "--pack",
+    "<installation>/iq2_xs",
+    "--native",
+    "<installation>/Qwen3.8-Flash-Next-GSQ-RCO-IQ2_XS-00001-of-00002.gguf",
+    "--ple-gguf",
+    "<installation>/Qwen3.8-Flash-Next-GSQ-RCO-IQ2_XS-00002-of-00002.gguf",
+    "--expert-profile",
+    "<installation>/expert-profile.bin",
+    "--expert-cache",
+    "5120",
+    "--prefill",
+    "1024",
+    "--spec",
+    "4",
+    "--spec-min-p",
+    "0.5",
+    "--mtp",
+    "<installation>/rt",
+    "--max-context",
+    "65536",
+    "--kv",
+    "int8",
+    "--kv-resident",
+    "32768",
+    "--adapt-every",
+    "0",
+    "--pcie-frac",
+    "0"
+  ],
+  "cwd": "model installation directory",
+  "binary_sha256": "94a09ccac8fb00fa2e7c6d90c5f89106576e86f2794a7efc1a3e756d58209ee1",
+  "repetitions": 3,
+  "tokens": 256,
+  "cases": [
+    [
+      "code",
+      "Write a Python function that merges overlapping intervals. Explain the invariants and give three examples.",
+      {}
+    ],
+    [
+      "math",
+      "Explain how to estimate the square root of 19 using Newton’s method. Work through the arithmetic.",
+      {}
+    ],
+    [
+      "prose",
+      "Write a short story about a radio operator receiving an unexpected message from an abandoned station.",
+      {}
+    ],
+    [
+      "chinese",
+      "用中文介绍哈希表扩容的实现方法，并说明如何保持查询性能。",
+      {}
+    ],
+    [
+      "sample-code",
+      "Explain when to use a mutex, a semaphore, and a condition variable. Include practical examples.",
+      {
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "top_k": 40,
+        "seed": 84719
+      }
+    ],
+    [
+      "sample-prose",
+      "Describe a small town preparing for its first winter festival, including a surprising complication.",
+      {
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "top_k": 40,
+        "seed": 29387
+      }
+    ]
+  ],
+  "order": [
+    "upstream-reference",
+    "baseline-before",
+    "pipeline",
+    "baseline-after"
+  ],
+  "binaries": {
+    "upstream-reference": {
+      "path": "installed upstream engine",
+      "sha256": "4a0b9dbeb7f1d0ba57ddf58e6d7c9e78a31c75405027db4ba39312169d27f056"
+    },
+    "baseline-before": {
+      "path": "build/strata",
+      "sha256": "94a09ccac8fb00fa2e7c6d90c5f89106576e86f2794a7efc1a3e756d58209ee1"
+    },
+    "pipeline": {
+      "path": "build/strata",
+      "sha256": "94a09ccac8fb00fa2e7c6d90c5f89106576e86f2794a7efc1a3e756d58209ee1"
+    },
+    "baseline-after": {
+      "path": "build/strata",
+      "sha256": "94a09ccac8fb00fa2e7c6d90c5f89106576e86f2794a7efc1a3e756d58209ee1"
+    }
+  },
+  "note": "No experimental head; fixed expert placement and PCIe fraction; warmup excluded per prompt."
+}

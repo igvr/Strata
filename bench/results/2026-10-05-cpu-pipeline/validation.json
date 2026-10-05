@@ -1,0 +1,40 @@
+{
+  "production_binary_sha256": "94a09ccac8fb00fa2e7c6d90c5f89106576e86f2794a7efc1a3e756d58209ee1",
+  "cpu": "AMD Ryzen 9 7950X3D",
+  "gpu": "NVIDIA RTX 4080 SUPER 16 GiB",
+  "driver": "580.178.04",
+  "os": "Linux 7.2.8-1-cachyos-bore",
+  "model": "Qwen3.8-Flash-Next GSQ-RCO IQ2_XS",
+  "release_parity": {
+    "normal": true,
+    "forced_avx2": true,
+    "output_floats_per_run": 209571840,
+    "note": "Passed before final test-only strengthening to change inputs and use independent oracle scratch."
+  },
+  "thread_sanitizer": {
+    "focused_stress_passed": true,
+    "seconds": 268.96,
+    "output_floats": 13271040,
+    "reported_races": 0,
+    "note": "Earlier stress data pattern; final strengthened test has not been rerun under TSan."
+  },
+  "full_tsan_matrix": {
+    "status": "timeout",
+    "seconds": 300.06,
+    "completed_formats": [
+      "22/42"
+    ]
+  },
+  "inference": {
+    "processes": 4,
+    "requests": 72,
+    "all_token_ids_equal": true,
+    "warmups_per_process": 6,
+    "measured_requests_per_process": 12
+  },
+  "latest_strengthened_stress": {
+    "status": "passed",
+    "output_floats": 4423680,
+    "scope": "release; changed per-batch inputs, distinct expert inputs and independent oracle scratch"
+  }
+}

@@ -370,6 +370,7 @@ void ExpertPool::diag(std::FILE* f) const {
 
 ExpertPool::ExpertPool(int n_workers, bool pin, bool host_works, PoolAffinity affinity)
     : host_works_(host_works), affinity_(affinity), topo_(detect_cpu_topology(true, affinity)) {
+    if (const char* e = std::getenv("STRATA_CPU_PIPELINE")) native_pipeline_ = std::atoi(e) != 0;
     if (const char* e = std::getenv("STRATA_POOL_SPIN_US"))   // a test knob; see kSpinBeforeSleep
         spin_before_sleep_ = std::chrono::microseconds((std::max)(0, std::atoi(e)));
     if (n_workers > 0) {
@@ -539,6 +540,58 @@ void ExpertPool::wait_done(int n) {
     }
 }
 
+// A host that drains a consumer task must not bypass wait_done's stall bound.
+void ExpertPool::wait_native_ready(int e) {
+    uint32_t spins = 0;
+    std::chrono::steady_clock::time_point t0{};
+    while (!ready_[e].ready.load(std::memory_order_acquire)) {
+        _mm_pause();
+        if ((++spins & 1023u) != 0) continue;
+        const auto now = std::chrono::steady_clock::now();
+        if (spins == 1024u) t0 = now;
+        else if (now - t0 > kStall) {
+            std::fprintf(stderr, "strata: native CPU expert %d stalled: %d of %d gate/up tasks finished\n",
+                         e, ready_[e].gu_done.load(), pipe_gu_parts_);
+            strata::core::release_gpu_waits(stderr);
+            std::fflush(stderr);
+            std::abort();
+        }
+    }
+}
+
+// Row kernels are shared by the barrier and pipelined schedulers: same dot
+// products and quantizers. Task boundaries, ownership and readiness differ.
+void ExpertPool::native_rows(int phase, int e, int r0, int r1) {
+    SplitBufMulti& sb = split_multi_[(size_t) e];
+    if (phase == 5 && q2_native_kernels(nfmt_->gu_type)) {
+        // a native Q2_0 pack: gate and up rows on the Q2_0 kernels, then SwiGLU
+        thread_local float gbuf[MAXT][FF], ubuf[MAXT][FF];
+        float* gp[MAXT];
+        float* up[MAXT];
+        for (int t = 0; t < mjobs_[e].nt; ++t) { gp[t] = gbuf[t]; up[t] = ubuf[t]; }
+        const int nbk = (int) (nfmt_->n_embd / 64);
+        q2_rows_any(mjobs_[e].blob, nfmt_->gu_row, nbk, mjobs_[e].act, mjobs_[e].nt, gp, r0, r1);
+        q2_rows_any(mjobs_[e].blob + nfmt_->up_off, nfmt_->gu_row, nbk, mjobs_[e].act, mjobs_[e].nt, up, r0, r1);
+        for (int t = 0; t < mjobs_[e].nt; ++t)
+            for (int r = r0; r < r1; ++r)
+                sb.ff[t][r] = (gbuf[t][r] / (1.f + std::exp(-gbuf[t][r]))) * ubuf[t][r];
+    } else if (phase == 5) {
+        float* ff[MAXT];
+        for (int t = 0; t < mjobs_[e].nt; ++t) ff[t] = sb.ff[t];
+        native_gu_rows(*nfmt_, mjobs_[e].blob, mjobs_[e].nact, mjobs_[e].nt, ff, r0, r1);
+    } else if (q2_native_kernels(nfmt_->d_type)) {
+        // Q2_0 down (most IQ layers): the AVX-512 kernel, ggml-cpu has only a scalar one on x86
+        const ActQ* a2[MAXT];
+        for (int t = 0; t < mjobs_[e].nt; ++t) a2[t] = &sb.a2[t];
+        q2_rows_any(mjobs_[e].blob + nfmt_->down_off, nfmt_->d_row, (int) (nfmt_->n_ff / 64), a2,
+                    mjobs_[e].nt, mjobs_[e].out, r0, r1);
+    } else {
+        const void* hq[MAXT];
+        for (int t = 0; t < mjobs_[e].nt; ++t) hq[t] = sb.hq[t];
+        native_down_rows(*nfmt_, mjobs_[e].blob, hq, mjobs_[e].nt, mjobs_[e].out, r0, r1);
+    }
+}
+
 void ExpertPool::drain(int id, ExpertScratch& scratch, uint32_t epoch) {
     (void) id;
     for (;;) {
@@ -558,6 +611,28 @@ void ExpertPool::drain(int id, ExpertScratch& scratch, uint32_t epoch) {
             const int e = (int) i / parts_b_, part = (int) i % parts_b_;
             const int r0 = H * part / parts_b_, r1 = H * (part + 1) / parts_b_;
             s2_expert_down_rows(jobs_[e].blob, split_[(size_t) e].a2, jobs_[e].out, r0, r1);
+        } else if (mode_ == 7) {
+            const int ng = pipe_experts_ * pipe_gu_parts_;
+            if ((int) i < ng) {
+                const int e = (int) i / pipe_gu_parts_, part = (int) i % pipe_gu_parts_;
+                native_rows(5, e, FF * part / pipe_gu_parts_, FF * (part + 1) / pipe_gu_parts_);
+                // The last producer acquires all preceding row stores before quantization.
+                if (ready_[e].gu_done.fetch_add(1, std::memory_order_acq_rel) == pipe_gu_parts_ - 1) {
+                    for (int t = 0; t < mjobs_[e].nt; ++t) {
+                        if (q2_native_kernels(nfmt_->d_type))
+                            act_quant_any(split_multi_[e].ff[t], FF, split_multi_[e].a2[t]);
+                        else native_quant_h(*nfmt_, split_multi_[e].ff[t], split_multi_[e].hq[t]);
+                    }
+                    ready_[e].ready.store(true, std::memory_order_release);
+                }
+            } else {
+                const int k = (int) i - ng;
+                const int e = k / pipe_down_parts_, part = k % pipe_down_parts_;
+                // All producers have already been claimed. A waiting consumer cannot
+                // strand an unclaimed producer; remaining producers make progress.
+                wait_native_ready(e);
+                native_rows(6, e, H * part / pipe_down_parts_, H * (part + 1) / pipe_down_parts_);
+            }
         } else if (mode_ >= 5) {
             // plan v0.3 P6: native layers, 5 = gate/up rows, 6 = down rows
             const int per = mode_ == 5 ? FF : H;
@@ -565,34 +640,7 @@ void ExpertPool::drain(int id, ExpertScratch& scratch, uint32_t epoch) {
             for (int64_t r = g0; r < g1;) {
                 const int e = (int) (r / per), r0 = (int) (r % per);
                 const int r1 = (int) std::min<int64_t>(per, r0 + (g1 - r));
-                SplitBufMulti& sb = split_multi_[(size_t) e];
-                if (mode_ == 5 && q2_native_kernels(nfmt_->gu_type)) {
-                    // a native Q2_0 pack: gate and up rows on the Q2_0 kernels, then SwiGLU
-                    thread_local float gbuf[MAXT][FF], ubuf[MAXT][FF];
-                    float* gp[MAXT];
-                    float* up[MAXT];
-                    for (int t = 0; t < mjobs_[e].nt; ++t) { gp[t] = gbuf[t]; up[t] = ubuf[t]; }
-                    const int nbk = (int) (nfmt_->n_embd / 64);
-                    q2_rows_any(mjobs_[e].blob, nfmt_->gu_row, nbk, mjobs_[e].act, mjobs_[e].nt, gp, r0, r1);
-                    q2_rows_any(mjobs_[e].blob + nfmt_->up_off, nfmt_->gu_row, nbk, mjobs_[e].act, mjobs_[e].nt, up, r0, r1);
-                    for (int t = 0; t < mjobs_[e].nt; ++t)
-                        for (int r = r0; r < r1; ++r)
-                            sb.ff[t][r] = (gbuf[t][r] / (1.f + std::exp(-gbuf[t][r]))) * ubuf[t][r];
-                } else if (mode_ == 5) {
-                    float* ff[MAXT];
-                    for (int t = 0; t < mjobs_[e].nt; ++t) ff[t] = sb.ff[t];
-                    native_gu_rows(*nfmt_, mjobs_[e].blob, mjobs_[e].nact, mjobs_[e].nt, ff, r0, r1);
-                } else if (q2_native_kernels(nfmt_->d_type)) {
-                    // Q2_0 down (most IQ layers): the AVX-512 kernel, ggml-cpu has only a scalar one on x86
-                    const ActQ* a2[MAXT];
-                    for (int t = 0; t < mjobs_[e].nt; ++t) a2[t] = &sb.a2[t];
-                    q2_rows_any(mjobs_[e].blob + nfmt_->down_off, nfmt_->d_row, (int) (nfmt_->n_ff / 64), a2,
-                                mjobs_[e].nt, mjobs_[e].out, r0, r1);
-                } else {
-                    const void* hq[MAXT];
-                    for (int t = 0; t < mjobs_[e].nt; ++t) hq[t] = sb.hq[t];
-                    native_down_rows(*nfmt_, mjobs_[e].blob, hq, mjobs_[e].nt, mjobs_[e].out, r0, r1);
-                }
+                native_rows(mode_, e, r0, r1);
                 r += r1 - r0;
             }
         } else {
@@ -695,6 +743,20 @@ void ExpertPool::run_split_multi_native(const NativeFmt& f, ExpertJobMulti* jobs
         mjobs_ = jobs + b0;
         nfmt_ = &f;
         const int threads = n_ + (host_works_ ? 1 : 0);
+        if (native_pipeline_) {
+            pipe_experts_ = nb;
+            pipe_gu_parts_ = (std::max)(1, (3 * threads + nb - 1) / nb);
+            pipe_down_parts_ = pipe_gu_parts_;
+            for (int e = 0; e < nb; ++e) {
+                ready_[e].gu_done.store(0, std::memory_order_relaxed);
+                ready_[e].ready.store(false, std::memory_order_relaxed);
+            }
+            const auto pipe_start = std::chrono::steady_clock::now();
+            run_phase(7, nb * (pipe_gu_parts_ + pipe_down_parts_));
+            ms_multi_pipeline += std::chrono::duration<double, std::milli>(
+                std::chrono::steady_clock::now() - pipe_start).count();
+            continue;
+        }
         mtasks_ = 3 * threads;
         mrows_ = (int64_t) nb * FF;
         const auto a = std::chrono::steady_clock::now();

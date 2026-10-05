@@ -143,6 +143,8 @@ public:
     ExpertPool& operator=(const ExpertPool&) = delete;
 
     int workers() const { return n_; }
+    /// Configure between completed batches only. Off by default; STRATA_CPU_PIPELINE=1 opts in.
+    void set_native_pipeline(bool enabled) { native_pipeline_ = enabled; }
     /// Whether the host thread also drains.  Reported at startup, because "the engine adapts to the machine it
     /// is on" is only true if the engine says which adaptation it took.
     bool host_works() const { return host_works_; }
@@ -169,8 +171,8 @@ public:
     /// Plan v0.3 P6: the same for a native pack's layer (ggml-cpu arithmetic, `nact` activations).
     void run_split_multi_native(const NativeFmt& f, ExpertJobMulti* jobs, int n);
     static constexpr int kMaxSplitMulti = 96;
-    /// run_split_multi's phases, accumulated ms: gate/up rows, the intermediate quantization, down rows.
-    double ms_multi_gu = 0, ms_multi_q = 0, ms_multi_down = 0;
+    /// Accumulated wall times: separate phases on the barrier path, one total on the pipelined path.
+    double ms_multi_gu = 0, ms_multi_q = 0, ms_multi_down = 0, ms_multi_pipeline = 0;
     int64_t multi_bytes = 0;
 
     /// Total `_mm_pause` iterations spent waiting, over all workers, is no longer counted - see the note on the
@@ -207,6 +209,15 @@ private:
     void worker(int id);
     void drain(int id, ExpertScratch& scratch, uint32_t epoch);
     void run_phase(int mode, int n_tasks);
+    void native_rows(int phase, int expert, int r0, int r1);
+    void wait_native_ready(int expert);
+    struct alignas(64) ExpertReady {
+        std::atomic<int> gu_done{0};
+        std::atomic<bool> ready{false};
+    };
+    // One producer counter and publication flag per expert, isolated from adjacent experts.
+    ExpertReady ready_[kMaxSplitMulti];
+    int pipe_experts_ = 0, pipe_gu_parts_ = 0, pipe_down_parts_ = 0;
     /// Claim the next job of batch `epoch`, or -1 (that batch is exhausted, or it is not the current one).
     int claim(uint32_t epoch);
     /// Publish the batch whose description the caller has just written: reset `done`, then `head`, then the epoch.
@@ -219,6 +230,7 @@ private:
 
     int n_ = 0;
     bool host_works_ = true;
+    bool native_pipeline_ = false;
     ExpertJob* jobs_ = nullptr;
     int njobs_ = 0;
     /// The host's own scratch when `host_works_`.  A separate object rather than a share of `scratch_[i]`,

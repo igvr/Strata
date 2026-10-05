@@ -8133,7 +8133,10 @@ int main(int argc, char** argv) {
                         ver.ms_commit / rounds,
                         (double) (drive.d.multi_misses - misses0) / (double) (rounds * g.n_layers),
                         (double) (drive.d.multi_entries - entries0) / (double) (rounds * g.n_layers));
-        if (rounds > 0)
+        if (rounds > 0 && pool.ms_multi_pipeline > 0)
+            std::printf("%-24s pipelined gate/up, quantize and down %.3f ms/round; CPU pool call %.3f ms/round\n",
+                        "pool multi", pool.ms_multi_pipeline / rounds, (drive.cpu_ms - pool_ms0) / rounds);
+        else if (rounds > 0)
             std::printf("%-24s gate/up %.3f  quantize %.3f  down %.3f ms/round; %.1f GB/s over the rows phases; "
                         "CPU pool call %.3f ms/round\n", "pool multi", pool.ms_multi_gu / rounds,
                         pool.ms_multi_q / rounds, pool.ms_multi_down / rounds,

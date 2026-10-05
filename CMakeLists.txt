@@ -1220,6 +1220,19 @@ if(STRATA_BUILD_TESTS)
   add_executable(pool_test src/kernels/cpu/pool_test.cpp)
   target_link_libraries(pool_test PRIVATE strata_kernels_cpu)
   add_test(NAME pool_test COMMAND pool_test --selftest WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+  # Native scheduler: model-free numerical parity and repeated/sleeping-worker coverage.
+  if(STRATA_NATIVE_EXPERTS)
+    add_executable(native_pool_pipeline_test src/kernels/cpu/native_pool_pipeline_test.cpp)
+    target_link_libraries(native_pool_pipeline_test PRIVATE strata_kernels_cpu)
+    add_test(NAME native_pool_pipeline_test COMMAND native_pool_pipeline_test)
+    add_test(NAME native_pool_pipeline_test_avx2 COMMAND native_pool_pipeline_test)
+    add_test(NAME native_pool_pipeline_stress COMMAND native_pool_pipeline_test --stress)
+    set_tests_properties(native_pool_pipeline_test native_pool_pipeline_test_avx2 native_pool_pipeline_stress
+                         PROPERTIES TIMEOUT 300 ENVIRONMENT "STRATA_POOL_SPIN_US=100")
+    # Exercises the engine's AVX2 dispatch on an AVX-512 host; not an older-CPU performance claim.
+    set_tests_properties(native_pool_pipeline_test_avx2
+                         PROPERTIES ENVIRONMENT "STRATA_POOL_SPIN_US=100;STRATA_FORCE_AVX2=1")
+  endif()
   # issue #29: tiny batches with sleeping workers, as on a big-VRAM card; a hang fails it
   add_executable(pool_stress src/kernels/cpu/pool_stress.cpp)
   target_link_libraries(pool_stress PRIVATE strata_kernels_cpu)
